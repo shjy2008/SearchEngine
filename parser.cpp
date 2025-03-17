@@ -56,7 +56,8 @@ int main() {
 					std::string content = line.substr(readStartIndex, i - readStartIndex);
 					currentText += content;
 
-					if (currentTagName != "DOCNO") { // the '<' of </DOCNO>. Don't need to extract texts of DOCNO 
+					if (currentTagName != "DOCNO") // the '<' of </DOCNO>. (Don't need to extract texts of DOCNO)
+					{ 
 						// Extract and print all the words
 						std::vector<std::string> words = extractWords(currentText);
 						for (size_t wordIndex = 0; wordIndex < words.size(); ++wordIndex) {
@@ -83,19 +84,19 @@ int main() {
 					if (tagName[0] != '/') { // It's an open tag. e.g. <DOC>
 						currentTagName = tagName;
 						if (currentTagName == "DOC") { // The '>' of <DOC>, the beginning of a document
+							// if (documentIndex % 1000 == 0) 
+							// {
+							// 	std::cout << documentIndex << " documents processed." << std::endl;
+							// }
 							++documentIndex;
 						}
 					}
-					else { // It's an close tag. e.g. </DOC>
+					else { // It's a close tag. e.g. </DOC>
 
 						if (tagName == "/DOC") { // The '>' of </DOC>, the end of a document
 							currentDocNo = "";
 
-							// std::cout << std::endl; // TODO: output an blank line between documents
-							if (documentIndex % 1000 == 0) 
-							{
-								std::cout << documentIndex + 1 << " documents processed." << std::endl;
-							}
+							std::cout << std::endl; // Output an blank line between documents
 						}
 						else if (currentTagName == "DOCNO") { // the '>' of </DOCNO>, the close tag of a document no.
 							currentDocNo = currentText;
@@ -132,8 +133,8 @@ int main() {
 		++lineIndex;
 
 		// TODO
-		if (lineIndex >= 50)
-			break;
+		// if (lineIndex >= 50)
+		// 	break;
 	}
 
 	std::cout << "All " << documentIndex + 1 << " documents processed." << std::endl;

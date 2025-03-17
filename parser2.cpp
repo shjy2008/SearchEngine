@@ -24,7 +24,7 @@ int main() {
 
 	bool isReadingDocNo = false;
 
-	bool isCurrentTagFinished = false;
+	bool isInCloseTag = false;
 	std::string currentTagName = "";
 	std::string currentContent = "";
 	std::string currentDocNo = "";
@@ -46,7 +46,7 @@ int main() {
 				isReadingTag = false;
 				isReadingContent = true;
 
-				if (isCurrentTagFinished) {
+				if (isInCloseTag) {
 					if (currentTagName == "DOCNO") {
 						// std::cout << "DOCNO: " << currentContent << std::endl; // Output the DOCNO
 						currentDocNo = currentContent;
@@ -62,7 +62,7 @@ int main() {
 						// }
 						++documentIndex;
 					}
-					isCurrentTagFinished = false;
+					isInCloseTag = false;
 				}
 				else {
 					if (currentTagName == "DOCNO")
@@ -75,14 +75,14 @@ int main() {
 			else {
 				if (isReadingTag) {
 					if (i > 0 && line[i] == '/' && line[i - 1] == '<') {
-						isCurrentTagFinished = true;
+						isInCloseTag = true;
 					}
 					else {
 						currentTagName += line[i];
 					}
 				}
 				else if (isReadingContent && !isReadingDocNo) {
-					// If encounter a space, or reach the end of a line, output the word
+					// If encounter not alphabet, or reach the end of a line, output the word
 					if ((!std::isalpha(line[i]) || i == line.length() - 1)
 						&& currentContent.length() > 0)
 					{
