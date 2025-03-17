@@ -55,7 +55,7 @@ int main() {
 						std::vector<std::string> words = extractWords(currentText);
 						for (size_t wordIndex = 0; wordIndex < words.size(); ++wordIndex) {
 							std::string word = words[wordIndex];
-							// std::cout << word << std::endl; // TODO
+							std::cout << word << std::endl; // TODO: output each word as a line
 						}
 					}
 
@@ -77,7 +77,6 @@ int main() {
 					if (tagName[0] != '/') { // It's an open tag. e.g. <DOC>
 						currentTagName = tagName;
 						if (currentTagName == "DOC") { // The '>' of <DOC>, the beginning of a document
-							// std::cout << std::endl; // TODO
 							++documentIndex;
 						}
 					}
@@ -86,6 +85,7 @@ int main() {
 						if (tagName == "/DOC") { // The '>' of </DOC>, the end of a document
 							currentDocNo = "";
 
+							std::cout << std::endl; // TODO: output an blank line between documents
 							if (documentIndex % 1000 == 0) 
 							{
 								std::cout << documentIndex + 1 << " documents processed." << std::endl;
@@ -126,8 +126,11 @@ int main() {
 		++lineIndex;
 
 		// TODO
-		// if (lineIndex >= 2500)
+		// if (lineIndex >= 50)
 		// 	break;
 	}
+
+	std::cout << "All " << documentIndex + 1 << " documents processed." << std::endl;
+
 	return 0;
 }
