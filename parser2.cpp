@@ -50,7 +50,7 @@ int main() {
 					if (currentTagName == "DOCNO") {
 						// std::cout << "DOCNO: " << currentContent << std::endl; // Output the DOCNO
 						currentDocNo = currentContent;
-						// outputWord(currentContent);
+						// outputWord(currentDocNo);
 						isReadingDocNo = false;
 					}
 					else if (currentTagName == "DOC") {
