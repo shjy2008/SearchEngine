@@ -2,17 +2,16 @@
 #include <fstream>
 #include <sstream>
 
-// Extract words from a text string
-std::vector<std::string> extractWords(const std::string& text) {
-	std::vector<std::string> words;
-	std::istringstream stream(text);
-
-	std::string word;
-	while (stream >> word) {
-		words.push_back(word);
+void addCharToWord(std::string& word, char c) {
+	// if (isalnum(c)) {
+	if (std::isalpha(c)) {
+		word += std::tolower(c);
 	}
+}
 
-	return words;
+void outputWord(const std::string& word) {
+	if (word.length() > 0)
+		std::cout << word << std::endl; // TODO: output each word as a line
 }
 
 int main() {
@@ -20,89 +19,91 @@ int main() {
 
 	std::string line = "";
 
-	bool readingTag = false;
-	bool readingContent = false;
+	bool isReadingTag = false;
+	bool isReadingContent = false;
+
+	bool isReadingDocNo = false;
 
 	bool isCurrentTagFinished = false;
 	std::string currentTagName = "";
-
 	std::string currentContent = "";
-
 	std::string currentDocNo = "";
 
 	int documentIndex = -1;
 
-
 	int lineIndex = 0;
 	while (getline(file, line)) {
-
-		// readStartIndex = 0;
 
 		for (size_t i = 0; i < line.length(); ++i) {
 
 			// Start of a tag
 			if (line[i] == '<') {
-				readingTag = true;
-				readingContent = false;
+				isReadingTag = true;
+				isReadingContent = false;
+				outputWord(currentContent);
 			}
 			else if (line[i] == '>') { // End of a tag
-				readingTag = false;
-				readingContent = true;
+				isReadingTag = false;
+				isReadingContent = true;
 
 				if (isCurrentTagFinished) {
-					// std::cout << line[i] << " " << currentTagName << " " << currentContent << std::endl;
 					if (currentTagName == "DOCNO") {
-						// std::cout << "DOCNO: " << currentContent << std::endl;
+						// std::cout << "DOCNO: " << currentContent << std::endl; // Output the DOCNO
 						currentDocNo = currentContent;
+						// outputWord(currentContent);
+						isReadingDocNo = false;
 					}
 					else if (currentTagName == "DOC") {
 						currentDocNo = "";
+						// std::cout << std::endl; // TODO: output an blank line between documents
+						// if (documentIndex % 1000 == 0) 
+						// {
+						// 	std::cout << documentIndex << " documents processed." << std::endl;
+						// }
 						++documentIndex;
-						std::cout << std::endl; // TODO: output an blank line between documents
-						if (documentIndex % 1000 == 0) 
-						{
-							std::cout << documentIndex + 1 << " documents processed." << std::endl;
-						}
-					}
-					else {
-						std::vector<std::string> words = extractWords(currentContent);
-						for (size_t wordIndex = 0; wordIndex < words.size(); ++wordIndex) {
-							std::string word = words[wordIndex];
-							std::cout << word << std::endl; // TODO: output each word as a line
-						}
 					}
 					isCurrentTagFinished = false;
+				}
+				else {
+					if (currentTagName == "DOCNO")
+						isReadingDocNo = true;
 				}
 
 				currentTagName = "";
 				currentContent = "";
 			}
 			else {
-				if (readingTag) {
-					if (i > 0 && line[i - 1] == '<' && line[i] == '/') {
+				if (isReadingTag) {
+					if (i > 0 && line[i] == '/' && line[i - 1] == '<') {
 						isCurrentTagFinished = true;
 					}
 					else {
 						currentTagName += line[i];
 					}
 				}
-				else if (readingContent) {
-					currentContent += line[i];
+				else if (isReadingContent && !isReadingDocNo) {
+					// If encounter a space, or reach the end of a line, output the word
+					if ((!std::isalpha(line[i]) || i == line.length() - 1)
+						&& currentContent.length() > 0)
+					{
+						if (i == line.length() - 1) {
+							addCharToWord(currentContent, line[i]);
+						}
+						outputWord(currentContent);
+						currentContent = "";
+					}
+					else{
+						addCharToWord(currentContent, line[i]);
+					}
 				}
 			}
 		}
 
-		if (readingContent) {
-			currentContent += '\n';
-		}
-
-		// std::cout << std::endl;
-
 		++lineIndex;
 
-		// TODO
-		// if (lineIndex >= 50)
-		// 	break;
+		// For debug only
+		if (lineIndex >= 50)
+			break;
 	}
 
 	std::cout << "All " << documentIndex + 1 << " documents processed." << std::endl;

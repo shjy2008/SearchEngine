@@ -9,7 +9,13 @@ std::vector<std::string> extractWords(const std::string& text) {
 
 	std::string word;
 	while (stream >> word) {
-		words.push_back(word);
+		std::string newWord = "";
+		for (size_t i = 0; i < word.length(); ++i) {
+			if (std::isalpha(word[i]))
+				newWord += std::tolower(word[i]);
+		}
+		if (newWord.length() > 0)
+			words.push_back(newWord);
 	}
 
 	return words;
@@ -85,7 +91,7 @@ int main() {
 						if (tagName == "/DOC") { // The '>' of </DOC>, the end of a document
 							currentDocNo = "";
 
-							std::cout << std::endl; // TODO: output an blank line between documents
+							// std::cout << std::endl; // TODO: output an blank line between documents
 							if (documentIndex % 1000 == 0) 
 							{
 								std::cout << documentIndex + 1 << " documents processed." << std::endl;
@@ -126,8 +132,8 @@ int main() {
 		++lineIndex;
 
 		// TODO
-		// if (lineIndex >= 50)
-		// 	break;
+		if (lineIndex >= 50)
+			break;
 	}
 
 	std::cout << "All " << documentIndex + 1 << " documents processed." << std::endl;
