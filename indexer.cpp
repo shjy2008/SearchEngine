@@ -8,8 +8,10 @@ std::vector<std::string> extractWords(const std::string& text) {
 
 	std::string word;
 	for (size_t i = 0; i < text.size(); ++i){
-		if (std::isalnum(text[i]) || text[i] == '-') // some words have '-', such as "well-being"
+		if (std::isalpha(text[i]))
 			word += std::tolower(text[i]);
+		else if (std::isdigit(text[i]) || text[i] == '-')// some words have '-', such as "well-being"
+			word += text[i];
 		else {
 			if (word.length() > 0) {
 				words.push_back(word);
@@ -22,6 +24,7 @@ std::vector<std::string> extractWords(const std::string& text) {
 
 	return words;
 }
+
 
 std::string stripString(const std::string& text) {
 	int start = 0;
@@ -58,7 +61,7 @@ public:
 		// So don't need wordToPostings.find(word)
 		std::vector<std::pair<int, int> >& postings = wordToPostings[word];
 		if (postings.size() == 0 || postings[postings.size() - 1].first != docId) {
-			postings.push_back({docId, 1});
+			postings.push_back(std::pair<int, int>(docId, 1));
 		}
 		else {
 			postings[postings.size() - 1].second += 1;
@@ -104,7 +107,7 @@ public:
 						// Output the words, and save to postings
 						for (size_t wordIndex = 0; wordIndex < words.size(); ++wordIndex) {
 							std::string word = words[wordIndex];
-							std::cout << word << std::endl; // output each word as a line
+							// std::cout << word << std::endl; // output each word as a line
 
 							int docId = documentIndex + 1;
 							this->addWordToPostings(word, docId);
@@ -140,12 +143,13 @@ public:
 								this->documentLengths.push_back(currentDocumentLength);
 								currentDocumentLength = 0;
 
-								std::cout << std::endl; // Output an blank line between documents
+								// Output an blank line between documents
+								// std::cout << std::endl;
 
-								// if (documentIndex % 100 == 0) 
-								// {
-								// 	std::cout << documentIndex << " documents processed." << std::endl;
-								// }
+								if (documentIndex % 1000 == 0) 
+								{
+									std::cout << documentIndex << " documents processed." << std::endl;
+								}
 								++documentIndex;
 							}
 

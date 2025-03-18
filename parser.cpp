@@ -8,8 +8,10 @@ std::vector<std::string> extractWords(const std::string& text) {
 
 	std::string word;
 	for (size_t i = 0; i < text.size(); ++i){
-		if (std::isalnum(text[i]) || text[i] == '-') // some words have '-', such as "well-being"
+		if (std::isalpha(text[i]))
 			word += std::tolower(text[i]);
+		else if (std::isdigit(text[i]) || text[i] == '-')// some words have '-', such as "well-being"
+			word += text[i];
 		else {
 			if (word.length() > 0) {
 				words.push_back(word);
@@ -71,7 +73,7 @@ public:
 						// Output the words
 						for (size_t wordIndex = 0; wordIndex < words.size(); ++wordIndex) {
 							std::string word = words[wordIndex];
-							std::cout << word << std::endl; // output each word as a line
+							// std::cout << word << std::endl; // output each word as a line
 						}
 
 						readingContent = false;
@@ -98,12 +100,12 @@ public:
 								currentDocNo = "";
 
 								// Output an blank line between documents
-								std::cout << std::endl; 
+								// std::cout << std::endl; 
 
-								// if (documentIndex % 100 == 0) 
-								// {
-								// 	std::cout << documentIndex << " documents processed." << std::endl;
-								// }
+								if (documentIndex % 1000 == 0) 
+								{
+									std::cout << documentIndex << " documents processed." << std::endl;
+								}
 								++documentIndex;
 							}
 

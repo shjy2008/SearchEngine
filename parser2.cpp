@@ -3,8 +3,7 @@
 #include <sstream>
 
 void addCharToWord(std::string& word, char c) {
-	// if (isalnum(c)) {
-	if (std::isalpha(c)) {
+	if (isalnum(c) || c == '-') { // some words have '-', such as "well-being"
 		word += std::tolower(c);
 	}
 }
@@ -56,10 +55,10 @@ int main() {
 					else if (currentTagName == "DOC") {
 						currentDocNo = "";
 						// std::cout << std::endl; // TODO: output an blank line between documents
-						// if (documentIndex % 1000 == 0) 
-						// {
-						// 	std::cout << documentIndex << " documents processed." << std::endl;
-						// }
+						if (documentIndex % 1000 == 0) 
+						{
+							std::cout << documentIndex << " documents processed." << std::endl;
+						}
 						++documentIndex;
 					}
 					isInCloseTag = false;
@@ -102,8 +101,8 @@ int main() {
 		++lineIndex;
 
 		// For debug only
-		if (lineIndex >= 50)
-			break;
+		// if (lineIndex >= 50)
+		// 	break;
 	}
 
 	std::cout << "All " << documentIndex + 1 << " documents processed." << std::endl;
