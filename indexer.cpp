@@ -5,18 +5,20 @@
 // Extract words from a text string
 std::vector<std::string> extractWords(const std::string& text) {
 	std::vector<std::string> words;
-	std::istringstream stream(text);
 
 	std::string word;
-	while (stream >> word) {
-		std::string newWord = "";
-		for (size_t i = 0; i < word.length(); ++i) {
-			if (std::isalpha(word[i]))
-				newWord += std::tolower(word[i]);
+	for (size_t i = 0; i < text.size(); ++i){
+		if (std::isalnum(text[i]) || text[i] == '-') // some words have '-', such as "well-being"
+			word += std::tolower(text[i]);
+		else {
+			if (word.length() > 0) {
+				words.push_back(word);
+			}
+			word = "";
 		}
-		if (newWord.length() > 0)
-			words.push_back(newWord);
 	}
+	if (word.length() > 0)
+		words.push_back(word);
 
 	return words;
 }
@@ -43,12 +45,17 @@ private:
 	// word -> [(docid_1, term frequency), (docid_1, term frequency), ...]
 	std::unordered_map<std::string, std::vector<std::pair<int, int> > > wordToPostings; 
 
+	// Document lengths
+	std::vector<int> documentLengths;
+
 public:
 	Indexer(std::string fileName) {
 		this->fileName = fileName;
 	}
 
 	void addWordToPostings(const std::string& word, int docId) {
+		// Since all documents are processed one by one, the current document is always the last one in postings.
+		// So don't need wordToPostings.find(word)
 		std::vector<std::pair<int, int> >& postings = wordToPostings[word];
 		if (postings.size() == 0 || postings[postings.size() - 1].first != docId) {
 			postings.push_back({docId, 1});
@@ -69,8 +76,9 @@ public:
 		std::string currentTagName = "";
 		std::string currentText = "";
 		std::string currentDocNo = "";
+		int currentDocumentLength = 0;
 
-		int documentIndex = -1; // ++ when encounter <DOC>
+		int documentIndex = 0; // ++ when encounter </DOC>
 		int lineIndex = 0;
 
 		while (getline(file, line)) {
@@ -85,20 +93,26 @@ public:
 						std::string content = line.substr(readStartIndex, i - readStartIndex);
 						currentText += content;
 
-						if (currentTagName != "DOCNO") // the '<' of </DOCNO>. (Don't need to extract texts of DOCNO)
-						{ 
-							// Extract and print all the words
-							std::vector<std::string> words = extractWords(currentText);
-							for (size_t wordIndex = 0; wordIndex < words.size(); ++wordIndex) {
-								std::string word = words[wordIndex];
-								// std::cout << word << std::endl; // output each word as a line
+						// Extract and print all the words
+						std::vector<std::string> words = extractWords(currentText);
 
-								int docId = documentIndex + 1;
-								this->addWordToPostings(word, docId);
-							}
+						if (currentTagName == "DOCNO") { // the '<' of </DOCNO>, the close tag of a document no.
+							currentDocNo = words[0]; //stripString(currentText);
+							// TODO: Save the currentDocNo
 						}
 
-						// std::cout << content;
+						// Output the words, and save to postings
+						for (size_t wordIndex = 0; wordIndex < words.size(); ++wordIndex) {
+							std::string word = words[wordIndex];
+							std::cout << word << std::endl; // output each word as a line
+
+							int docId = documentIndex + 1;
+							this->addWordToPostings(word, docId);
+						}
+
+						// Save document length
+						currentDocumentLength += words.size();
+
 						readingContent = false;
 					}
 
@@ -115,31 +129,30 @@ public:
 						std::string tagName = line.substr(readStartIndex, i - readStartIndex);
 						if (tagName[0] != '/') { // It's an open tag. e.g. <DOC>
 							currentTagName = tagName;
-							if (currentTagName == "DOC") { // The '>' of <DOC>, the beginning of a document
-								// if (documentIndex % 1000 == 0) 
+						}
+						else { // It's a close tag. e.g. </DOC>
+
+							// Reach the end of a document
+							if (tagName == "/DOC") { 
+								currentDocNo = "";
+
+								// Save current document length
+								this->documentLengths.push_back(currentDocumentLength);
+								currentDocumentLength = 0;
+
+								std::cout << std::endl; // Output an blank line between documents
+
+								// if (documentIndex % 100 == 0) 
 								// {
 								// 	std::cout << documentIndex << " documents processed." << std::endl;
 								// }
 								++documentIndex;
 							}
-						}
-						else { // It's a close tag. e.g. </DOC>
-
-							if (tagName == "/DOC") { // The '>' of </DOC>, the end of a document
-								currentDocNo = "";
-
-								std::cout << std::endl; // Output an blank line between documents
-							}
-							else if (currentTagName == "DOCNO") { // the '>' of </DOCNO>, the close tag of a document no.
-								currentDocNo = stripString(currentText);
-
-								// std::cout << currentDocNo << std::endl;
-							}
 
 							currentTagName = "";
 							currentText = "";
 						}
-						// std::cout << tagName;
+						
 						readingTag = false;
 					}
 
@@ -149,27 +162,22 @@ public:
 
 					continue;
 				}
-				// std::cout << line[lineIndex];
 			}
 
 			// Add the rest of the line to currentText
 			if (readingContent) {
 				std::string content = line.substr(readStartIndex, line.length() - readStartIndex);
-				// std::cout << content;
 				currentText += content + "\n";
 			}
 
-			// std::cout << std::endl;
-
-			// std::cout << line << std::endl;
 			++lineIndex;
 
 			// TODO: for test
-			if (lineIndex >= 50)
+			if (lineIndex >= 100)
 				break;
 		}
 
-		std::cout << "All " << documentIndex + 1 << " documents processed." << std::endl;
+		std::cout << "All " << documentIndex << " documents processed." << std::endl;
 
 	}
 };
