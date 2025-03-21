@@ -12,6 +12,8 @@ private:
 	std::ifstream wordPostingsFile; // Word postings
 
 	int totalDocuments = 0; // number of documents in total, initialize after loading index_docLengths.bin
+	float averageDocumentLength = 0.0f; // Average length of all the documents, used for BM25
+	std::unordered_map<int, int> docIdToLength; // docId -> documentLength
 
 	// word -> (pos, docNum)
 	// -- pos: how many documents before the word's first document
@@ -27,8 +29,19 @@ public:
 		this->loadWordPostingsIndex(); // load word postings index from disk
 
 		// Get total document number by dividing the size of docLength.bin by 4 bytes
-        docLengthsFile.seekg(0, std::ifstream::end); // seekg() moves the get pointer to the end
-		totalDocuments = docLengthsFile.tellg() / sizeof(int); // tellg() get the position of the get pointer
+        // docLengthsFile.seekg(0, std::ifstream::end); // seekg() moves the get pointer to the end
+		// totalDocuments = docLengthsFile.tellg() / sizeof(int); // tellg() get the position of the get pointer
+
+		int length = 0;
+		int docId = 0;
+		int totalLength = 0;
+		while (docLengthsFile.read((char*)&length, sizeof(length))) {
+			++docId;
+			this->docIdToLength[docId] = length;
+			totalLength += length;
+		}
+		this->totalDocuments = docId;
+		this->averageDocumentLength = (float)totalLength / this->totalDocuments;
 	}
 
 	// Load all the index files from disk
@@ -42,10 +55,16 @@ public:
 
 	// Get document length(how many words in doc) with docId: 1, 2, 3, ... (read from the postings)
 	int getDocumentLength(int docId) {
-		docLengthsFile.seekg(sizeof(int) * (docId - 1), std::ifstream::beg);
-		int length = 0;
-		docLengthsFile.read((char*)&length, sizeof(length));
-		return length;
+		// docLengthsFile.seekg(sizeof(int) * (docId - 1), std::ifstream::beg);
+		// int length = 0;
+		// docLengthsFile.read((char*)&length, sizeof(length));
+		// return length;
+
+		std::unordered_map<int, int>::iterator itr = this->docIdToLength.find(docId);
+		if (itr != this->docIdToLength.end()) {
+			return itr->second;
+		}
+		return 0;
 	}
 
 	// Get document DOCNO with docId
@@ -116,14 +135,33 @@ public:
 		return postings;
 	}
 
-	// tf_td: term frequency of term in doc
+	// tf_td: number of the term appears in doc
+	// tf_tq: number of the term appears in query
 	// docLength: how many words in the document
 	// totalDocuments: how many documents in total
 	// docNumContainTerm: how many documents contain the term
-	float getRankingScore(int tf, int docLength, int docNumContainWord) {
-		float tf_td = (float)tf / docLength;
-		float idf = (float)this->totalDocuments / docNumContainWord;
-		return tf_td * idf;
+	float getRankingScore(int tf_td, int tf_tq, int docLength, int docNumContainWord) {
+		// TF-IDF
+		// float tf_td_normalized = (float)tf_td / docLength;
+		// float idf = (float)this->totalDocuments / docNumContainWord;
+		// return tf_td_normalized * idf;
+
+		// BM25 - slide (but it will produce negative value when docNumContainWord > 1/2 totalDocuments, and the ranking is wrong)
+		// float w_t = log2f((this->totalDocuments - docNumContainWord + 0.5f) / (docNumContainWord + 0.5f));
+		// float k1 = 1.2f;
+		// float k3 = 7;
+		// float b = 0.75f;
+		// float K = k1 * ((1 - b) + (b * docLength / this->averageDocumentLength));
+		// float w_dt = w_t * ((k1 + 1) * tf_td / (K + tf_td)) * ((k3 + 1) * tf_tq / (k3 + tf_tq));
+		// return w_dt;
+
+		// Okapi BM25 https://en.wikipedia.org/wiki/Okapi_BM25
+		float idf = logf((this->totalDocuments - docNumContainWord + 0.5f) / (docNumContainWord + 0.5f) + 1); // Ensure positive
+		float k1 = 1.2f;
+		float b = 0.75f;
+		float K = k1 * ((1 - b) + b * docLength / this->averageDocumentLength);
+		float score = idf * (tf_td * (k1 + 1) / (tf_td + K));
+		return score;
 	}
 
 	void run() {
@@ -131,16 +169,18 @@ public:
 		for (int i = 0; i < word.length(); ++i)
 			word[i] = std::tolower(word[i]);
 
+		int tf_tq = 1; // TODO
+
 		std::vector<std::pair<int, float> > vecDocIdScore; // docId and score: [(docId1, score1), (docId2, score2), ...]
 		std::vector<std::pair<int, int> > postings = this->getWordPostings(word);
 		for (int i = 0; i < postings.size(); ++i) {
 			int docId = postings[i].first; // docId (1, 2, 3, ...)
-			int tf = postings[i].second; // term frequency in doc
+			int tf_td = postings[i].second; // term frequency in doc
 
 			int docLength = this->getDocumentLength(docId);
 			int docNumContainWord = postings.size();
 
-			float score = this->getRankingScore(tf, docLength, docNumContainWord);
+			float score = this->getRankingScore(tf_td, tf_tq, docLength, docNumContainWord);
 			vecDocIdScore.push_back(std::pair<int, float>(docId, score));
 		}
 
@@ -176,9 +216,21 @@ public:
 
 int main() {
 
-	SearchEngine engine;
-	engine.load();
-	engine.run();
+	// TODO: time (./search < Q > A) < 1s
+
+	std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
+
+	for (int i = 0; i < 1000; ++i)
+	{
+		SearchEngine engine;
+		engine.load();
+		engine.run();
+		// break;
+	}
+
+	std::chrono::steady_clock::time_point time_end = std::chrono::steady_clock::now();
+
+	std::cout << "Time used: " << std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_begin).count() << std::endl;
 
 	return 0;
 }
