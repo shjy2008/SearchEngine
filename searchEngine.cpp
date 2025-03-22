@@ -10,8 +10,13 @@ std::vector<std::string> extractWords(const std::string& text) {
 	for (size_t i = 0; i < text.size(); ++i){
 		if (std::isalpha(text[i]))
 			word += std::tolower(text[i]);
-		else if (std::isdigit(text[i]) || text[i] == '-')// some words have '-', such as "well-being"
+		else if (std::isdigit(text[i]))
 			word += text[i];
+		else if (text[i] == '-') { // some words have '-', such as "well-being"
+			if (i > 0 && std::isalnum(text[i - 1])) {
+				word += text[i];
+			}
+		}
 		else {
 			if (word.length() > 0) {
 				if (word.length() > 255) { // length is stored in uint8_t, so truncate the word if its length > 255
@@ -159,9 +164,8 @@ public:
 
 	// tf_td: number of the term appears in doc
 	// docLength: how many words in the document
-	// totalDocuments: how many documents in total
-	// docNumContainTerm: how many documents contain the term
-	float getRankingScore(int tf_td, int docLength, int docNumContainWord) {
+	// idf: inverted document frequency (calculated by total document and documents contain the word)
+	float getRankingScore(int tf_td, int docLength, float idf) {
 		// TF-IDF
 		// float tf_td_normalized = (float)tf_td / docLength;
 		// float idf = (float)this->totalDocuments / docNumContainWord;
@@ -177,10 +181,9 @@ public:
 		// return w_dt;
 
 		// Okapi BM25 https://en.wikipedia.org/wiki/Okapi_BM25
-		float idf = logf((this->totalDocuments - docNumContainWord + 0.5f) / (docNumContainWord + 0.5f) + 1); // Ensure positive
 		float k1 = 1.2f;
 		float b = 0.75f;
-		float K = k1 * ((1 - b) + b * docLength / this->averageDocumentLength);
+		float K = k1 * ((1 - b) + b * (docLength / this->averageDocumentLength));
 		float score = idf * (tf_td * (k1 + 1) / (tf_td + K));
 		return score;
 	}
@@ -195,16 +198,20 @@ public:
 			std::string word = *itrWords;
 			for (int i = 0; i < word.length(); ++i)
 				word[i] = std::tolower(word[i]);
-	
+
 			std::vector<std::pair<int, int> > postings = this->getWordPostings(word);
+			int docNumContainWord = postings.size();
+
+			// Okapi BM25 https://en.wikipedia.org/wiki/Okapi_BM25
+			float idf = log((this->totalDocuments - docNumContainWord + 0.5) / (docNumContainWord + 0.5) + 1); // Ensure positive
+
 			for (int i = 0; i < postings.size(); ++i) {
 				int docId = postings[i].first; // docId (1, 2, 3, ...)
 				int tf_td = postings[i].second; // term frequency in doc
 	
 				int docLength = this->getDocumentLength(docId);
-				int docNumContainWord = postings.size();
 	
-				float score = this->getRankingScore(tf_td, docLength, docNumContainWord);
+				float score = this->getRankingScore(tf_td, docLength, idf);
 
 				// Add score to mapDocIdScore
 				if (score > 0) {
@@ -218,7 +225,6 @@ public:
 				}
 			}	
 		}
-
 
 		std::vector<std::pair<int, float> > vecDocIdScore; // docId and score: [(docId1, score1), (docId2, score2), ...]
 		for (std::unordered_map<int, float>::iterator itrMapDocIdScore = mapDocIdScore.begin(); itrMapDocIdScore != mapDocIdScore.end(); ++itrMapDocIdScore) {
@@ -234,9 +240,11 @@ public:
 
 	void run() {
 
-		// std::string query = "John Street";
+		// std::string query = "rosenfield wall street unilateral representation";
+		// std::string query = "rosenfield";
 		std::string query;
-		while(std::getline(std::cin, query)) {
+		while(std::getline(std::cin, query)) 
+		{
 			std::vector<std::pair<int, float> > vecDocIdScore = this->getSortedRelevantDocuments(query);
 	
 			// Print the sorted list of docNo and score
@@ -247,22 +255,6 @@ public:
 				std::cout << docNo << " " << score << std::endl;
 			}
 		}
-
-
-		// std::cout << this->getWordPostings("john") << std::endl;
-
-		// std::cout << this->getWordPostings("is") << std::endl;
-
-		// std::cout << this->getWordPostings("agreement") << std::endl;
-
-
-		// std::cout << getDocNo(2) << std::endl;
-
-		// std::cout << getDocNo(3) << std::endl;
-
-		// std::cout << getDocNo(4) << std::endl;
-
-		// std::cout << getDocNo(5) << std::endl;
 	}
 };
 
