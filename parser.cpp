@@ -131,10 +131,6 @@ public:
 			}
 
 			++lineIndex;
-
-			// TODO: for test
-			// if (lineIndex >= 100)
-			// 	break;
 		}
 
 		// std::cout << "All " << documentIndex << " documents processed." << std::endl;

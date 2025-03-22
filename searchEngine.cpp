@@ -2,6 +2,36 @@
 #include <fstream>
 #include <sstream>
 
+// Extract words from a text string
+std::vector<std::string> extractWords(const std::string& text) {
+	std::vector<std::string> words;
+
+	std::string word;
+	for (size_t i = 0; i < text.size(); ++i){
+		if (std::isalpha(text[i]))
+			word += std::tolower(text[i]);
+		else if (std::isdigit(text[i]) || text[i] == '-')// some words have '-', such as "well-being"
+			word += text[i];
+		else {
+			if (word.length() > 0) {
+				if (word.length() > 255) { // length is stored in uint8_t, so truncate the word if its length > 255
+					word = word.substr(0, 255);
+				}
+				words.push_back(word);
+			}
+			word = "";
+		}
+	}
+	if (word.length() > 0)
+		words.push_back(word);
+
+	return words;
+}
+
+bool sortScoreCompare(const std::pair<int, float>& a, const std::pair<int, float>& b) {
+	return a.second > b.second;
+}
+
 class SearchEngine {
 
 private:
@@ -11,8 +41,8 @@ private:
 	std::ifstream wordPostingsIndexFile; // Word postings index, for seeking and reading word postings. Stored as (wordLength(int8), word, pos(int), docNum(int))
 	std::ifstream wordPostingsFile; // Word postings
 
-	int totalDocuments = 0; // number of documents in total, initialize after loading index_docLengths.bin
-	float averageDocumentLength = 0.0f; // Average length of all the documents, used for BM25
+	int totalDocuments; // number of documents in total, initialize after loading index_docLengths.bin
+	float averageDocumentLength; // Average length of all the documents, used for BM25
 	std::unordered_map<int, int> docIdToLength; // docId -> documentLength
 
 	// word -> (pos, docNum)
@@ -28,10 +58,7 @@ public:
 		this->loadIndexFiles(); // load all the index files
 		this->loadWordPostingsIndex(); // load word postings index from disk
 
-		// Get total document number by dividing the size of docLength.bin by 4 bytes
-        // docLengthsFile.seekg(0, std::ifstream::end); // seekg() moves the get pointer to the end
-		// totalDocuments = docLengthsFile.tellg() / sizeof(int); // tellg() get the position of the get pointer
-
+		// Read docLengths.bin to get total document number and average document length
 		int length = 0;
 		int docId = 0;
 		int totalLength = 0;
@@ -55,11 +82,6 @@ public:
 
 	// Get document length(how many words in doc) with docId: 1, 2, 3, ... (read from the postings)
 	int getDocumentLength(int docId) {
-		// docLengthsFile.seekg(sizeof(int) * (docId - 1), std::ifstream::beg);
-		// int length = 0;
-		// docLengthsFile.read((char*)&length, sizeof(length));
-		// return length;
-
 		std::unordered_map<int, int>::iterator itr = this->docIdToLength.find(docId);
 		if (itr != this->docIdToLength.end()) {
 			return itr->second;
@@ -136,11 +158,10 @@ public:
 	}
 
 	// tf_td: number of the term appears in doc
-	// tf_tq: number of the term appears in query
 	// docLength: how many words in the document
 	// totalDocuments: how many documents in total
 	// docNumContainTerm: how many documents contain the term
-	float getRankingScore(int tf_td, int tf_tq, int docLength, int docNumContainWord) {
+	float getRankingScore(int tf_td, int docLength, int docNumContainWord) {
 		// TF-IDF
 		// float tf_td_normalized = (float)tf_td / docLength;
 		// float idf = (float)this->totalDocuments / docNumContainWord;
@@ -164,38 +185,69 @@ public:
 		return score;
 	}
 
-	void run() {
-		std::string word = "STREET";
-		for (int i = 0; i < word.length(); ++i)
-			word[i] = std::tolower(word[i]);
+	// input: query (multiple words) e.g. italy commercial
+	// output: a list of sorted docId and score. e.g. [(1, 2.5), (10, 2.1), ...]
+	std::vector<std::pair<int, float> > getSortedRelevantDocuments(const std::string& query) {
+		std::vector<std::string> words = extractWords(query);
 
-		int tf_tq = 1; // TODO
+		std::unordered_map<int, float> mapDocIdScore;
+		for (std::vector<std::string>::iterator itrWords = words.begin(); itrWords != words.end(); ++itrWords) {
+			std::string word = *itrWords;
+			for (int i = 0; i < word.length(); ++i)
+				word[i] = std::tolower(word[i]);
+	
+			std::vector<std::pair<int, int> > postings = this->getWordPostings(word);
+			for (int i = 0; i < postings.size(); ++i) {
+				int docId = postings[i].first; // docId (1, 2, 3, ...)
+				int tf_td = postings[i].second; // term frequency in doc
+	
+				int docLength = this->getDocumentLength(docId);
+				int docNumContainWord = postings.size();
+	
+				float score = this->getRankingScore(tf_td, docLength, docNumContainWord);
+
+				// Add score to mapDocIdScore
+				if (score > 0) {
+					std::unordered_map<int, float>::iterator itrMapDocIdScore = mapDocIdScore.find(docId);
+					if (itrMapDocIdScore != mapDocIdScore.end()) {
+						itrMapDocIdScore->second += score;
+					}
+					else {
+						mapDocIdScore[docId] = score;
+					}
+				}
+			}	
+		}
+
 
 		std::vector<std::pair<int, float> > vecDocIdScore; // docId and score: [(docId1, score1), (docId2, score2), ...]
-		std::vector<std::pair<int, int> > postings = this->getWordPostings(word);
-		for (int i = 0; i < postings.size(); ++i) {
-			int docId = postings[i].first; // docId (1, 2, 3, ...)
-			int tf_td = postings[i].second; // term frequency in doc
-
-			int docLength = this->getDocumentLength(docId);
-			int docNumContainWord = postings.size();
-
-			float score = this->getRankingScore(tf_td, tf_tq, docLength, docNumContainWord);
-			vecDocIdScore.push_back(std::pair<int, float>(docId, score));
+		for (std::unordered_map<int, float>::iterator itrMapDocIdScore = mapDocIdScore.begin(); itrMapDocIdScore != mapDocIdScore.end(); ++itrMapDocIdScore) {
+			vecDocIdScore.push_back(std::pair<int, float>(itrMapDocIdScore->first, itrMapDocIdScore->second));			
 		}
 
 		// Sort by score
-		std::sort(vecDocIdScore.begin(), vecDocIdScore.end(), [](const std::pair<int, float>& a, const std::pair<int, float>& b) {
-			return a.second > b.second;
-		});
+		std::sort(vecDocIdScore.begin(), vecDocIdScore.end(), sortScoreCompare);
 
-		// Print the sorted list of docNo and score
-		for (int i = 0; i < vecDocIdScore.size(); ++i) {
-			std::string docNo = this->getDocNo(vecDocIdScore[i].first);
-			float score = vecDocIdScore[i].second;
+		return vecDocIdScore;
+	}
 
-			std::cout << docNo << " " << score << std::endl;
+
+	void run() {
+
+		// std::string query = "John Street";
+		std::string query;
+		while(std::getline(std::cin, query)) {
+			std::vector<std::pair<int, float> > vecDocIdScore = this->getSortedRelevantDocuments(query);
+	
+			// Print the sorted list of docNo and score
+			for (int i = 0; i < vecDocIdScore.size(); ++i) {
+				std::string docNo = this->getDocNo(vecDocIdScore[i].first);
+				float score = vecDocIdScore[i].second;
+	
+				std::cout << docNo << " " << score << std::endl;
+			}
 		}
+
 
 		// std::cout << this->getWordPostings("john") << std::endl;
 
@@ -220,17 +272,17 @@ int main() {
 
 	std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
 
-	for (int i = 0; i < 1000; ++i)
+	//for (int i = 0; i < 1000; ++i)
 	{
 		SearchEngine engine;
 		engine.load();
 		engine.run();
-		// break;
+		//break;
 	}
 
 	std::chrono::steady_clock::time_point time_end = std::chrono::steady_clock::now();
 
-	std::cout << "Time used: " << std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_begin).count() << std::endl;
+	std::cout << "Time used: " << std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_begin).count() << "ms" << std::endl;
 
 	return 0;
 }

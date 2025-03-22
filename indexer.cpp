@@ -14,6 +14,9 @@ std::vector<std::string> extractWords(const std::string& text) {
 			word += text[i];
 		else {
 			if (word.length() > 0) {
+				if (word.length() > 255) { // length is stored in uint8_t, so truncate the word if its length > 255
+					word = word.substr(0, 255);
+				}
 				words.push_back(word);
 			}
 			word = "";
@@ -240,10 +243,6 @@ public:
 			}
 
 			++lineIndex;
-
-			// TODO: for test
-			// if (lineIndex >= 100)
-			// 	break;
 		}
 
 		std::cout << "All " << documentIndex << " documents processed." << std::endl;
@@ -262,7 +261,7 @@ int main() {
 	// std::cout << "<" << stripString(s) << ">" << std::endl;
 	// return 0;
 
-	Indexer indexer("wsj_test.xml");
+	Indexer indexer("wsj.xml");
 	indexer.runIndexer();
 
 	return 0;
