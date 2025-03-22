@@ -10,8 +10,13 @@ std::vector<std::string> extractWords(const std::string& text) {
 	for (size_t i = 0; i < text.size(); ++i){
 		if (std::isalpha(text[i]))
 			word += std::tolower(text[i]);
-		else if (std::isdigit(text[i]) || text[i] == '-')// some words have '-', such as "well-being"
+		else if (std::isdigit(text[i]))
 			word += text[i];
+		else if (text[i] == '-') { // some words have '-', such as "well-being"
+			if (i > 0 && std::isalnum(text[i - 1])) {
+				word += text[i];
+			}
+		}
 		else {
 			if (word.length() > 0) {
 				if (word.length() > 255) { // length is stored in uint8_t, so truncate the word if its length > 255
@@ -27,7 +32,6 @@ std::vector<std::string> extractWords(const std::string& text) {
 
 	return words;
 }
-
 
 std::string stripString(const std::string& text) {
 	int start = 0;
@@ -175,7 +179,7 @@ public:
 						// Output the words, and save to postings
 						for (size_t wordIndex = 0; wordIndex < words.size(); ++wordIndex) {
 							std::string word = words[wordIndex];
-							// std::cout << word << std::endl; // output each word as a line
+							// std::cout << "token:" << word << std::endl; // output each word as a line
 
 							int docId = documentIndex + 1;
 							this->addWordToPostings(word, docId);
@@ -210,6 +214,7 @@ public:
 								// Save current document length
 								this->documentLengthList.push_back(currentDocumentLength);
 								currentDocumentLength = 0;
+
 
 								// Output an blank line between documents
 								// std::cout << std::endl;

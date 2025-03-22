@@ -10,10 +10,18 @@ std::vector<std::string> extractWords(const std::string& text) {
 	for (size_t i = 0; i < text.size(); ++i){
 		if (std::isalpha(text[i]))
 			word += std::tolower(text[i]);
-		else if (std::isdigit(text[i]) || text[i] == '-')// some words have '-', such as "well-being"
+		else if (std::isdigit(text[i]))
 			word += text[i];
+		else if (text[i] == '-') { // some words have '-', such as "well-being"
+			if (i > 0 && std::isalnum(text[i - 1])) {
+				word += text[i];
+			}
+		}
 		else {
 			if (word.length() > 0) {
+				if (word.length() > 255) { // length is stored in uint8_t, so truncate the word if its length > 255
+					word = word.substr(0, 255);
+				}
 				words.push_back(word);
 			}
 			word = "";
