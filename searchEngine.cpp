@@ -43,7 +43,7 @@ private:
 	std::ifstream docLengthsFile; // Document lengths for calculating scores. 4 bytes int each document length
 	std::ifstream docNoIndexFile; // DOCNO index file, for seeking and reading DOCNO. (pos1, len1, pos2, len2, ...) each in 4 bytes int
 	std::ifstream docNoFile; // DOCNO file, for showing DOCNO after retrieving docId
-	std::ifstream wordPostingsIndexFile; // Word postings index, for seeking and reading word postings. Stored as (wordLength(int8), word, pos(int), docNum(int))
+	std::ifstream wordsFile; // Words and their postings index, for seeking and reading word postings. Stored as (wordLength(int8), word, pos(int), docNum(int))
 	std::ifstream wordPostingsFile; // Word postings
 
 	int totalDocuments; // number of documents in total, initialize after loading index_docLengths.bin
@@ -53,15 +53,24 @@ private:
 	// word -> (pos, docNum)
 	// -- pos: how many documents before the word's first document
 	// -- docNum: how many documents the word appears in
-	std::unordered_map<std::string, std::pair<int, int> > wordPostingsIndex;
+	std::unordered_map<std::string, std::pair<int, int> > wordToPostingsIndex;
 
 public:
 	SearchEngine() {
 	}
 
 	void load() {
-		this->loadIndexFiles(); // load all the index files
-		this->loadWordPostingsIndex(); // load word postings index from disk
+		std::chrono::steady_clock::time_point time_load_1 = std::chrono::steady_clock::now();
+
+		this->openIndexFiles(); // load all the index files
+
+		std::chrono::steady_clock::time_point time_load_2 = std::chrono::steady_clock::now();
+		std::cout << "time 1: " << std::chrono::duration_cast<std::chrono::milliseconds>(time_load_2 - time_load_1).count() << "ms" << std::endl;
+
+		this->loadWords(); // load word postings index from disk
+
+		std::chrono::steady_clock::time_point time_load_3 = std::chrono::steady_clock::now();
+		std::cout << "time 2: " << std::chrono::duration_cast<std::chrono::milliseconds>(time_load_3 - time_load_2).count() << "ms" << std::endl;
 
 		// Read docLengths.bin to get total document number and average document length
 		int length = 0;
@@ -74,14 +83,18 @@ public:
 		}
 		this->totalDocuments = docId;
 		this->averageDocumentLength = (float)totalLength / this->totalDocuments;
+
+		std::chrono::steady_clock::time_point time_load_4 = std::chrono::steady_clock::now();
+		std::cout << "time 3: " << std::chrono::duration_cast<std::chrono::milliseconds>(time_load_4 - time_load_3).count() << "ms" << std::endl;
+
 	}
 
 	// Load all the index files from disk
-	void loadIndexFiles() {
+	void openIndexFiles() {
 		docLengthsFile.open("index_docLengths.bin");
 		docNoIndexFile.open("index_docNoIndex.bin");
 		docNoFile.open("index_docNo.bin");
-		wordPostingsIndexFile.open("index_wordPostingsIndex.bin");
+		wordsFile.open("index_words.bin");
 		wordPostingsFile.open("index_wordPostings.bin");
 	}
 
@@ -101,8 +114,8 @@ public:
 		docNoIndexFile.seekg(sizeof(int) * (docId - 1) * 2, std::ifstream::beg); // * 2 because each doc has pos and len
 		int pos = 0;
 		int len = 0;
-		docNoIndexFile.read((char*)&pos, sizeof(pos));
-		docNoIndexFile.read((char*)&len, sizeof(len));
+		docNoIndexFile.read((char*)&pos, 4);
+		docNoIndexFile.read((char*)&len, 4);
 
 		// Use the pos and len, seek to the specific pos, then read
 		docNoFile.seekg(pos, std::ifstream::beg);
@@ -112,26 +125,44 @@ public:
 		return docNo;
 	}
 
-	// Load word postings index
-	void loadWordPostingsIndex() {
-		while (true) {
-			uint8_t wordLength = 0;
-			wordPostingsIndexFile.read((char*)&wordLength, sizeof(wordLength));
+	// Load words and get the postings offset
+	void loadWords() {
 
-			if (wordPostingsIndexFile.gcount() == 0)
-				break;
+		wordsFile.seekg(0, std::ifstream::end);
+		long fileSize = wordsFile.tellg();
+		wordsFile.seekg(0, std::ifstream::beg);
 
-			std::string word(wordLength, '\0');
-			wordPostingsIndexFile.read(&word[0], wordLength);
+		char* buffer = new char[fileSize];
 
-			int pos = 0;
-			wordPostingsIndexFile.read((char*)&pos, sizeof(pos));
+		wordsFile.read(buffer, fileSize);
 
-			int docNum = 0;
-			wordPostingsIndexFile.read((char*)&docNum, sizeof(docNum));
+		char* pointer = buffer;
 
-			this->wordPostingsIndex[word] = std::pair<int, int>(pos, docNum);
+		std::chrono::steady_clock::time_point time_load_1 = std::chrono::steady_clock::now();
+
+		int wordCount = *reinterpret_cast<int*>(pointer);
+		pointer += 4;
+
+		for (int i = 0; i < wordCount; ++i) {
+			uint8_t wordLength = *reinterpret_cast<uint8_t*>(pointer);
+			++pointer;
+
+			std::string word(pointer, wordLength);
+			pointer += wordLength;
+
+			int pos = *reinterpret_cast<int*>(pointer);
+			pointer += 4;
+
+			int docNum = *reinterpret_cast<int*>(pointer);
+			pointer += 4;
+
+			this->wordToPostingsIndex[word] = std::pair<int, int>(pos, docNum);
 		}
+
+		delete[] buffer;
+
+		std::chrono::steady_clock::time_point time_load_2 = std::chrono::steady_clock::now();
+		std::cout << "time 2222: " << std::chrono::duration_cast<std::chrono::milliseconds>(time_load_2 - time_load_1).count() << "ms" << std::endl;
 	}
 
 	// Get word postings. input: word
@@ -139,8 +170,8 @@ public:
 	std::vector<std::pair<int, int> > getWordPostings(const std::string& word) {
 		std::vector<std::pair<int, int> > postings;
 
-		std::unordered_map<std::string, std::pair<int, int> >::iterator postingsIndexIt = this->wordPostingsIndex.find(word);
-		if (postingsIndexIt == this->wordPostingsIndex.end()) {
+		std::unordered_map<std::string, std::pair<int, int> >::iterator postingsIndexIt = this->wordToPostingsIndex.find(word);
+		if (postingsIndexIt == this->wordToPostingsIndex.end()) {
 			return postings; // Can't find the word, return empty vector
 		}
 
@@ -153,8 +184,8 @@ public:
 		for (int i = 0; i < docNum; ++i) {
 			int docId = 0;
 			int tf = 0;
-			wordPostingsFile.read((char*)&docId, sizeof(docId));
-			wordPostingsFile.read((char*)&tf, sizeof(tf));
+			wordPostingsFile.read((char*)&docId, 4);
+			wordPostingsFile.read((char*)&tf, 4);
 
 			postings.push_back(std::pair<int, int>(docId, tf));
 		}
@@ -240,13 +271,17 @@ public:
 
 	void run() {
 
+		std::cout << "run" << std::endl;
+
 		// std::string query = "rosenfield wall street unilateral representation";
-		// std::string query = "rosenfield";
-		std::string query;
-		while(std::getline(std::cin, query)) 
+		std::string query = "rosenfield";
+		// std::string query;
+		// while(std::getline(std::cin, query)) 
 		{
 			std::vector<std::pair<int, float> > vecDocIdScore = this->getSortedRelevantDocuments(query);
 	
+			std::cout << "run vecDocIdScore: " << this->wordToPostingsIndex.size() << std::endl;
+
 			// Print the sorted list of docNo and score
 			for (int i = 0; i < vecDocIdScore.size(); ++i) {
 				std::string docNo = this->getDocNo(vecDocIdScore[i].first);
@@ -261,16 +296,23 @@ public:
 int main() {
 
 	// TODO: time (./search < Q > A) < 1s
+	// Now if query = "rosenfield wall street unilateral representation"; time exceeds 2000ms
 
 	std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
 
-	//for (int i = 0; i < 1000; ++i)
-	{
-		SearchEngine engine;
-		engine.load();
+	SearchEngine engine;
+	engine.load();
+
+
+	// for (int i = 0; i < 1000; ++i)
+	// {
+
 		engine.run();
-		//break;
-	}
+
+	// 	std::chrono::steady_clock::time_point time_2 = std::chrono::steady_clock::now();
+	// 	std::cout << "time 2: " << std::chrono::duration_cast<std::chrono::milliseconds>(time_2 - time_1).count() << "ms" << std::endl;
+	// 	//break;
+	// }
 
 	std::chrono::steady_clock::time_point time_end = std::chrono::steady_clock::now();
 

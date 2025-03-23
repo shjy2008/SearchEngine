@@ -74,7 +74,7 @@ public:
 		// Save document length list
 		std::ofstream docLengthsFile("index_docLengths.bin"); // an int(4 byte) for each document length
 		for (size_t i = 0; i < documentLengthList.size(); ++i) {
-			docLengthsFile.write((const char*)&documentLengthList[i], sizeof(documentLengthList[i]));
+			docLengthsFile.write((const char*)&documentLengthList[i], 4);
 		}
 
 		// Save DOCNO list
@@ -87,8 +87,8 @@ public:
 			int length = docNoList[i].length();
 			docNoFile.write(docNoList[i].c_str(), length);
 
-			docNoIndexFile.write((const char*)&currentPos, sizeof(currentPos));
-			docNoIndexFile.write((const char*)&length, sizeof(length));
+			docNoIndexFile.write((const char*)&currentPos, 4);
+			docNoIndexFile.write((const char*)&length, 4);
 
 			currentPos += length;
 		}
@@ -98,10 +98,14 @@ public:
 		// 				docId1 for word2, tf1 for word2, ...) each in 4 bytes int
 		std::ofstream wordPostingsFile("index_wordPostings.bin");
 		// Use index_wordPostingsIndex.bin to seek and read wordPostings.bin
-		// Stored as (wordLength(int8), word, pos(int), docNum(int))
+		// Stored as: 4 byte word count + [(wordLength(1 byte), word, pos(4 bytes), docNum(4 bytes)), ...]
 		// -- pos: how many documents before the word's first document
 		// -- docNum: how many documents the word appears in (vector's size) 
-		std::ofstream wordPostingsIndexFile("index_wordPostingsIndex.bin");
+		std::ofstream wordsFile("index_words.bin");
+
+		int wordCount = (int)wordToPostings.size();
+		wordsFile.write((const char*)&wordCount, 4); // 4 byte word count
+
 		int docCounter = 0;
 		for (std::unordered_map<std::string, std::vector<std::pair<int, int> > >::iterator it 
 					= wordToPostings.begin(); it != wordToPostings.end(); ++it) 
@@ -111,16 +115,16 @@ public:
 			int docNum = postings.size();
 
 			uint8_t wordLength = (uint8_t)word.length();
-			wordPostingsIndexFile.write((const char*)&wordLength, sizeof(wordLength));
-			wordPostingsIndexFile.write(word.c_str(), wordLength);
-			wordPostingsIndexFile.write((const char*)&docCounter, sizeof(docCounter));
-			wordPostingsIndexFile.write((const char*)&docNum, sizeof(docNum));
+			wordsFile.write((const char*)&wordLength, 1);
+			wordsFile.write(word.c_str(), wordLength);
+			wordsFile.write((const char*)&docCounter, 4);
+			wordsFile.write((const char*)&docNum, 4);
 
 			for (int i = 0; i < docNum; ++i) {
 				int docId = postings[i].first;
 				int tf = postings[i].second;
-				wordPostingsFile.write((const char*)&docId, sizeof(docId));
-				wordPostingsFile.write((const char*)&tf, sizeof(tf));
+				wordPostingsFile.write((const char*)&docId, 4);
+				wordPostingsFile.write((const char*)&tf, 4);
 
 				++docCounter;
 			}
