@@ -274,9 +274,6 @@ public:
 
 
 	void run() {
-
-		std::cout << "run" << std::endl;
-
 		std::string query = "rosenfield wall street unilateral representation";
 		// std::string query = "rosenfield";
 		// std::string query;
@@ -300,8 +297,6 @@ public:
 
 int main() {
 
-	// TODO: time (./search < Q > A) < 1s
-	// Now if query = "rosenfield wall street unilateral representation"; time exceeds 2000ms
 	// TODO: turn all the int to uint32_t
 	// TODO: write a makefile use  g++ -Wall -Wextra -O3 -std=c++11 -o ./searchEngine ./searchEngine.cpp
 	// c++ -std=c++11 -O3 -Wno-unused-result JASSjr_search.cpp -o JASSjr_search
@@ -314,7 +309,7 @@ int main() {
 
 	std::chrono::steady_clock::time_point time_end = std::chrono::steady_clock::now();
 
-	std::cout << "Time used: " << std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_begin).count() << "ms" << std::endl;
+	// std::cout << "Time used: " << std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_begin).count() << "ms" << std::endl;
 
 	return 0;
 }

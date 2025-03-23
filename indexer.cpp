@@ -34,8 +34,11 @@ std::vector<std::string> extractWords(const std::string& text) {
 }
 
 std::string stripString(const std::string& text) {
-	int start = 0;
-	int end = text.length() - 1;
+	if (text.length() == 0) {
+		return "";
+	}
+	uint32_t start = 0;
+	uint32_t end = text.length() - 1;
 
 	while (start <= end && isspace(text[start])) {
 		++start;
@@ -55,7 +58,7 @@ private:
 	// word -> [(docid_1, term frequency), (docid_1, term frequency), ...]
 	// (docid: 1, 2, 3, ...)
 	// e.g. {"aircraft": [(6, 1), ...], "first": [(5, 1), (6, 2), ...], ...}
-	std::unordered_map<std::string, std::vector<std::pair<int, int> > > wordToPostings; 
+	std::unordered_map<std::string, std::vector<std::pair<uint32_t, uint32_t> > > wordToPostings; 
 
 	// DOCNO list 
 	// e.g. [WSJ870324-0001, WSJ870323-0181, ...]
@@ -63,7 +66,7 @@ private:
 
 	// Document length list
 	// e.g. [159, 64, 48, 30, 106, 129, ...]
-	std::vector<int> documentLengthList;
+	std::vector<uint32_t> documentLengthList;
 
 public:
 	Indexer(std::string fileName) {
@@ -72,7 +75,7 @@ public:
 
 	void saveIndexToFiles() {
 		// Save document length list
-		std::ofstream docLengthsFile("index_docLengths.bin"); // an int(4 byte) for each document length
+		std::ofstream docLengthsFile("index_docLengths.bin"); // an uint32_t(4 byte) for each document length
 		for (size_t i = 0; i < documentLengthList.size(); ++i) {
 			docLengthsFile.write((const char*)&documentLengthList[i], 4);
 		}
@@ -86,7 +89,7 @@ public:
 
 		// Save wordToPostings
 		// Stored as (docId1 for word1, term frequency 1 for word1, docId2 for word1, tf2 for word1, 
-		// 				docId1 for word2, tf1 for word2, ...) each in 4 bytes int
+		// 				docId1 for word2, tf1 for word2, ...) each in 4 bytes uint32_t
 		std::ofstream wordPostingsFile("index_wordPostings.bin");
 		// Use index_wordPostingsIndex.bin to seek and read wordPostings.bin
 		// Stored as: 4 byte word count + [(wordLength(1 byte), word, pos(4 bytes), docCount(4 bytes)), ...]
@@ -94,16 +97,16 @@ public:
 		// -- docCount: how many documents the word appears in (vector's size) 
 		std::ofstream wordsFile("index_words.bin");
 
-		int wordCount = (int)wordToPostings.size();
+		uint32_t wordCount = (uint32_t)wordToPostings.size();
 		wordsFile.write((const char*)&wordCount, 4); // 4 byte word count
 
-		int docCounter = 0;
-		for (std::unordered_map<std::string, std::vector<std::pair<int, int> > >::iterator it 
+		uint32_t docCounter = 0;
+		for (std::unordered_map<std::string, std::vector<std::pair<uint32_t, uint32_t> > >::iterator it 
 					= wordToPostings.begin(); it != wordToPostings.end(); ++it) 
 		{
 			std::string word = it->first;
-			std::vector<std::pair<int, int> > postings = it->second;
-			int docCount = postings.size();
+			std::vector<std::pair<uint32_t, uint32_t> > postings = it->second;
+			uint32_t docCount = postings.size();
 
 			uint8_t wordLength = (uint8_t)word.length();
 			wordsFile.write((const char*)&wordLength, 1);
@@ -111,9 +114,9 @@ public:
 			wordsFile.write((const char*)&docCounter, 4);
 			wordsFile.write((const char*)&docCount, 4);
 
-			for (int i = 0; i < docCount; ++i) {
-				int docId = postings[i].first;
-				int tf = postings[i].second;
+			for (uint32_t i = 0; i < docCount; ++i) {
+				uint32_t docId = postings[i].first;
+				uint32_t tf = postings[i].second;
 				wordPostingsFile.write((const char*)&docId, 4);
 				wordPostingsFile.write((const char*)&tf, 4);
 
@@ -122,12 +125,12 @@ public:
 		}
 	}
 
-	void addWordToPostings(const std::string& word, int docId) {
+	void addWordToPostings(const std::string& word, uint32_t docId) {
 		// Since all documents are processed one by one, the current document is always the last one in postings.
 		// So don't need wordToPostings.find(word), just access the last one
-		std::vector<std::pair<int, int> >& postings = wordToPostings[word];
+		std::vector<std::pair<uint32_t, uint32_t> >& postings = wordToPostings[word];
 		if (postings.size() == 0 || postings[postings.size() - 1].first != docId) {
-			postings.push_back(std::pair<int, int>(docId, 1));
+			postings.push_back(std::pair<uint32_t, uint32_t>(docId, 1));
 		}
 		else {
 			postings[postings.size() - 1].second += 1;
@@ -145,9 +148,9 @@ public:
 		std::string currentTagName = "";
 		std::string currentText = "";
 		std::string currentDocNo = "";
-		int currentDocumentLength = 0;
+		uint32_t currentDocumentLength = 0;
 
-		int documentIndex = 0; // ++ when encounter </DOC>
+		uint32_t documentIndex = 0; // ++ when encounter </DOC>
 
 		while (getline(file, line)) {
 
@@ -174,7 +177,7 @@ public:
 							std::string word = words[wordIndex];
 							// std::cout << "token:" << word << std::endl; // output each word as a line
 
-							int docId = documentIndex + 1;
+							uint32_t docId = documentIndex + 1;
 							this->addWordToPostings(word, docId);
 						}
 
@@ -244,6 +247,8 @@ public:
 		std::cout << "All " << documentIndex << " documents processed." << std::endl;
 
 		this->saveIndexToFiles();
+
+		std::cout << "Saved to index files." << std::endl;
 	}
 };
 

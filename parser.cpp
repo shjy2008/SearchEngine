@@ -55,8 +55,8 @@ public:
 		std::string currentText = "";
 		std::string currentDocNo = "";
 
-		int documentIndex = 0; // ++ when encounter </DOC>
-		int lineIndex = 0;
+		uint32_t documentIndex = 0; // ++ when encounter </DOC>
+		uint32_t lineIndex = 0;
 
 		while (getline(file, line)) {
 
