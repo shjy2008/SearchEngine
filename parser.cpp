@@ -55,8 +55,7 @@ public:
 		std::string currentText = "";
 		std::string currentDocNo = "";
 
-		uint32_t documentIndex = 0; // ++ when encounter </DOC>
-		uint32_t lineIndex = 0;
+		// uint32_t documentIndex = 0; // ++ when encounter </DOC>
 
 		while (getline(file, line)) {
 
@@ -81,7 +80,7 @@ public:
 						// Output the words
 						for (size_t wordIndex = 0; wordIndex < words.size(); ++wordIndex) {
 							std::string word = words[wordIndex];
-							// std::cout << word << std::endl; // output each word as a line
+							std::cout << word << std::endl; // output each word as a line
 						}
 
 						readingContent = false;
@@ -108,13 +107,13 @@ public:
 								currentDocNo = "";
 
 								// Output an blank line between documents
-								// std::cout << std::endl; 
+								std::cout << std::endl; 
 
-								if (documentIndex % 1000 == 0) 
-								{
-									std::cout << documentIndex << " documents processed." << std::endl;
-								}
-								++documentIndex;
+								// if (documentIndex % 1000 == 0) 
+								// {
+								// 	std::cout << documentIndex << " documents processed." << std::endl;
+								// }
+								// ++documentIndex;
 							}
 
 							currentTagName = "";
@@ -137,8 +136,6 @@ public:
 				std::string content = line.substr(readStartIndex, line.length() - readStartIndex);
 				currentText += content + "\n";
 			}
-
-			++lineIndex;
 		}
 
 		// std::cout << "All " << documentIndex << " documents processed." << std::endl;

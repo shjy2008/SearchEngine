@@ -33,6 +33,7 @@ std::vector<std::string> extractWords(const std::string& text) {
 	return words;
 }
 
+// Strip the spaces from the beginning and the end of a string
 std::string stripString(const std::string& text) {
 	if (text.length() == 0) {
 		return "";
@@ -168,7 +169,7 @@ public:
 						std::vector<std::string> words = extractWords(currentText);
 
 						if (currentTagName == "DOCNO") { // the '<' of </DOCNO>, the close tag of a document no.
-							currentDocNo = words[0]; //stripString(currentText);
+							currentDocNo = words[0]; //stripString(currentText); // Don't need to strip, extracted words are in good format
 							this->docNoList.push_back(currentDocNo);
 						}
 
