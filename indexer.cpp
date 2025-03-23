@@ -12,14 +12,14 @@ std::vector<std::string> extractWords(const std::string& text) {
 			word += std::tolower(text[i]);
 		else if (std::isdigit(text[i]))
 			word += text[i];
-		else if (text[i] == '-') { // some words have '-', such as "well-being"
-			if (i > 0 && std::isalnum(text[i - 1])) {
+		else if (text[i] == '-') { // Some words have '-', such as "well-being"
+			if (i > 0 && std::isalnum(text[i - 1])) { // Ignore words starting with '-'
 				word += text[i];
 			}
 		}
 		else {
 			if (word.length() > 0) {
-				if (word.length() > 255) { // length is stored in uint8_t, so truncate the word if its length > 255
+				if (word.length() > 255) { // Length is stored in uint8_t, so truncate the word if its length > 255
 					word = word.substr(0, 255);
 				}
 				words.push_back(word);
@@ -78,19 +78,10 @@ public:
 		}
 
 		// Save DOCNO list
-		std::ofstream docNoFile("index_docNo.bin"); // docNo("WSJ870324-0001") stored continuously
-		// Use docNoIndexFile.bin to seek and read docNo.bin. Stored as (pos1, len1, pos2, len2, ...) each in 4 bytes int
-		// "pos" is the offset from the beginning, "len" is the length of the corresponding DOCNO
-		std::ofstream docNoIndexFile("index_docNoIndex.bin");
-		int currentPos = 0;
-		for (size_t i = 0; i < docNoList.size(); ++i) {
-			int length = docNoList[i].length();
-			docNoFile.write(docNoList[i].c_str(), length);
-
-			docNoIndexFile.write((const char*)&currentPos, 4);
-			docNoIndexFile.write((const char*)&length, 4);
-
-			currentPos += length;
+		std::ofstream docNoFile("index_docNo.bin"); // docNo("WSJ870324-0001") string splitted by \0
+		for (size_t i = 0; i < this->docNoList.size(); ++i) {
+			std::string s = this->docNoList[i] + '\0'; // Add '\0' to the end to split strings
+			docNoFile.write(s.c_str(), s.length());
 		}
 
 		// Save wordToPostings
@@ -98,9 +89,9 @@ public:
 		// 				docId1 for word2, tf1 for word2, ...) each in 4 bytes int
 		std::ofstream wordPostingsFile("index_wordPostings.bin");
 		// Use index_wordPostingsIndex.bin to seek and read wordPostings.bin
-		// Stored as: 4 byte word count + [(wordLength(1 byte), word, pos(4 bytes), docNum(4 bytes)), ...]
+		// Stored as: 4 byte word count + [(wordLength(1 byte), word, pos(4 bytes), docCount(4 bytes)), ...]
 		// -- pos: how many documents before the word's first document
-		// -- docNum: how many documents the word appears in (vector's size) 
+		// -- docCount: how many documents the word appears in (vector's size) 
 		std::ofstream wordsFile("index_words.bin");
 
 		int wordCount = (int)wordToPostings.size();
@@ -112,15 +103,15 @@ public:
 		{
 			std::string word = it->first;
 			std::vector<std::pair<int, int> > postings = it->second;
-			int docNum = postings.size();
+			int docCount = postings.size();
 
 			uint8_t wordLength = (uint8_t)word.length();
 			wordsFile.write((const char*)&wordLength, 1);
 			wordsFile.write(word.c_str(), wordLength);
 			wordsFile.write((const char*)&docCounter, 4);
-			wordsFile.write((const char*)&docNum, 4);
+			wordsFile.write((const char*)&docCount, 4);
 
-			for (int i = 0; i < docNum; ++i) {
+			for (int i = 0; i < docCount; ++i) {
 				int docId = postings[i].first;
 				int tf = postings[i].second;
 				wordPostingsFile.write((const char*)&docId, 4);
@@ -157,7 +148,6 @@ public:
 		int currentDocumentLength = 0;
 
 		int documentIndex = 0; // ++ when encounter </DOC>
-		int lineIndex = 0;
 
 		while (getline(file, line)) {
 
@@ -176,8 +166,7 @@ public:
 
 						if (currentTagName == "DOCNO") { // the '<' of </DOCNO>, the close tag of a document no.
 							currentDocNo = words[0]; //stripString(currentText);
-							// TODO: Save the currentDocNo
-							docNoList.push_back(currentDocNo);
+							this->docNoList.push_back(currentDocNo);
 						}
 
 						// Output the words, and save to postings
@@ -250,8 +239,6 @@ public:
 				std::string content = line.substr(readStartIndex, line.length() - readStartIndex);
 				currentText += content + "\n";
 			}
-
-			++lineIndex;
 		}
 
 		std::cout << "All " << documentIndex << " documents processed." << std::endl;
@@ -261,15 +248,6 @@ public:
 };
 
 int main() {
-
-	// TODO: for test
-	// std::string testStr = "abcde abckk";
-	// std::vector<std::string> words = extractWords(testStr);
-	// std::cout << words[0] << words[1] << std::endl;
-	// std::string s = "      s aa d   ";
-	// std::cout << "<" << stripString(s) << ">" << std::endl;
-	// return 0;
-
 	Indexer indexer("wsj.xml");
 	indexer.runIndexer();
 

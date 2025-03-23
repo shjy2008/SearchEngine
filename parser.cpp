@@ -12,14 +12,14 @@ std::vector<std::string> extractWords(const std::string& text) {
 			word += std::tolower(text[i]);
 		else if (std::isdigit(text[i]))
 			word += text[i];
-		else if (text[i] == '-') { // some words have '-', such as "well-being"
-			if (i > 0 && std::isalnum(text[i - 1])) {
+		else if (text[i] == '-') { // Some words have '-', such as "well-being"
+			if (i > 0 && std::isalnum(text[i - 1])) { // Ignore words starting with '-'
 				word += text[i];
 			}
 		}
 		else {
 			if (word.length() > 0) {
-				if (word.length() > 255) { // length is stored in uint8_t, so truncate the word if its length > 255
+				if (word.length() > 255) { // Length is stored in uint8_t, so truncate the word if its length > 255
 					word = word.substr(0, 255);
 				}
 				words.push_back(word);
@@ -147,15 +147,6 @@ public:
 };
 
 int main() {
-
-	// TODO: for test
-	// std::string testStr = "abcde abckk";
-	// std::vector<std::string> words = extractWords(testStr);
-	// std::cout << words[0] << words[1] << std::endl;
-	// std::string s = "      s aa d   ";
-	// std::cout << "<" << stripString(s) << ">" << std::endl;
-	// return 0;
-
 	Parser parser("wsj.xml");
 	parser.runParser();
 
