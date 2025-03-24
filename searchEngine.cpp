@@ -89,8 +89,6 @@ public:
 
 		char* pointer = buffer;
 
-		delete[] buffer;
-
 		uint32_t length = 0;
 		uint32_t docId = 0;
 		uint32_t totalLength = 0;
@@ -100,20 +98,15 @@ public:
 			pointer += 4;
 
 			++docId;
+
 			this->docIdToLength[docId] = length;
 			totalLength += length;
 		}
 		
+		delete[] buffer;
 
-		// while (docLengthsFile.read((char*)&length, sizeof(length))) {
-		// 	++docId;
-		// 	this->docIdToLength[docId] = length;
-		// 	totalLength += length;
-		// }
 		this->totalDocuments = docId;
 		this->averageDocumentLength = (float)totalLength / this->totalDocuments;
-
-
 	}
 
 	// Get document length(how many words in doc) with docId: 1, 2, 3, ... (read from the postings)
@@ -268,7 +261,7 @@ public:
 				uint32_t tf_td = postings[i].second; // term frequency in doc
 	
 				uint32_t docLength = this->getDocumentLength(docId);
-	
+
 				float score = this->getRankingScore(tf_td, docLength, idf);
 
 				// Add score to mapDocIdScore
@@ -297,8 +290,8 @@ public:
 
 
 	void run() {
-		std::string query = "rosenfield wall street unilateral representation";
-		// std::string query = "rosenfield";
+		// std::string query = "rosenfield wall street unilateral representation";
+		std::string query = "hello";
 		// std::string query;
 		// while(std::getline(std::cin, query)) 
 		{
