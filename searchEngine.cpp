@@ -41,7 +41,7 @@ bool sortScoreCompare(const std::pair<uint32_t, float>& a, const std::pair<uint3
 // There are four .bin index files:
 // 1. index_docLengths.bin: Document lengths for calculating scores. 4 bytes uint32_t each document length
 // 2. index_docNo.bin: DOCNO file, for showing DOCNO after retrieving docId. String splited by \0 (docNo1 \0 docNo2 \0 ...)
-// 3. index_words.bin: Words and their postings index, for seeking and reading word postings. Stored as (wordLength(uint8_t), word, pos(uint32_t), docCount(uint32_t))
+// 3. index_words.bin: Words and their postings index, for seeking and reading word postings. Stored as 4 bytes word count + (wordLength(uint8_t), word, pos(uint32_t), docCount(uint32_t))
 // 4. index_wordPostings.bin: Word postings file, stored as (docId1, tf1, docId2, tf2, ...) each 4 bytes
 
 class SearchEngine {
@@ -291,20 +291,18 @@ public:
 
 	void run() {
 		// std::string query = "rosenfield wall street unilateral representation";
-		std::string query = "hello";
-		// std::string query;
-		// while(std::getline(std::cin, query)) 
-		{
-			std::vector<std::pair<uint32_t, float> > vecDocIdScore = this->getSortedRelevantDocuments(query);
-	
-			// Print the sorted list of docNo and score
-			for (size_t i = 0; i < vecDocIdScore.size(); ++i) {
-				uint32_t docId = vecDocIdScore[i].first;
-				std::string docNo = this->vecDocNo[docId - 1];
-				float score = vecDocIdScore[i].second;
-	
-				std::cout << docNo << " " << score << std::endl;
-			}
+		// std::string query = "hello";
+		std::string query;
+		std::getline(std::cin, query);
+		std::vector<std::pair<uint32_t, float> > vecDocIdScore = this->getSortedRelevantDocuments(query);
+
+		// Print the sorted list of docNo and score
+		for (size_t i = 0; i < vecDocIdScore.size(); ++i) {
+			uint32_t docId = vecDocIdScore[i].first;
+			std::string docNo = this->vecDocNo[docId - 1];
+			float score = vecDocIdScore[i].second;
+
+			std::cout << docNo << " " << score << std::endl;
 		}
 
 		this->wordPostingsFile.close();
@@ -312,18 +310,16 @@ public:
 };
 
 int main() {
-
-	// TODO: filter results: top N result, or relevance score > x
-
-	std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
+	
+	// std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
 
 	SearchEngine engine;
 	engine.load();
 	engine.run();
 
-	std::chrono::steady_clock::time_point time_end = std::chrono::steady_clock::now();
+	// std::chrono::steady_clock::time_point time_end = std::chrono::steady_clock::now();
 
-	std::cout << "Time used: " << std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_begin).count() << "ms" << std::endl;
+	// std::cout << "Time used: " << std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_begin).count() << "ms" << std::endl;
 
 	return 0;
 }

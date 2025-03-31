@@ -143,8 +143,13 @@ public:
 	}
 };
 
-int main() {
-	Parser parser("wsj.xml");
+int main(int argc, char* argv[]) {
+	if (argc != 2) {
+		std::cout << "Usage: enter a parameter as the file to parse. Example: ./parser wsj.xml" << std::endl;
+		return 0;
+	}
+
+	Parser parser(argv[1]);
 	parser.runParser();
 
 	return 0;

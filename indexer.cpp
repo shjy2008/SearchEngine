@@ -92,7 +92,7 @@ public:
 		// Stored as (docId1 for word1, term frequency 1 for word1, docId2 for word1, tf2 for word1, 
 		// 				docId1 for word2, tf1 for word2, ...) each in 4 bytes uint32_t
 		std::ofstream wordPostingsFile("index_wordPostings.bin");
-		// Use index_wordPostingsIndex.bin to seek and read wordPostings.bin
+		
 		// Stored as: 4 byte word count + [(wordLength(1 byte), word, pos(4 bytes), docCount(4 bytes)), ...]
 		// -- pos: how many documents before the word's first document
 		// -- docCount: how many documents the word appears in (vector's size) 
@@ -253,8 +253,13 @@ public:
 	}
 };
 
-int main() {
-	Indexer indexer("wsj.xml");
+int main(int argc, char* argv[]) {
+	if (argc != 2) {
+		std::cout << "Usage: enter a parameter as the file to create index. Example: ./indexer wsj.xml" << std::endl;
+		return 0;
+	}
+
+	Indexer indexer(argv[1]);
 	indexer.runIndexer();
 
 	return 0;
