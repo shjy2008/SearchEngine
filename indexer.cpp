@@ -1,6 +1,9 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <vector>
+#include <string>
+#include <unordered_map>
 
 // Extract words from a text string
 std::vector<std::string> extractWords(const std::string& text) {

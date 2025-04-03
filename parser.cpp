@@ -1,6 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <vector>
+#include <string>
 
 // Extract words from a text string
 std::vector<std::string> extractWords(const std::string& text) {

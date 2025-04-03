@@ -1,6 +1,11 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <vector>
+#include <string>
+#include <unordered_map>
+#include <cmath>
+#include <algorithm>
 
 // Extract words from a text string
 std::vector<std::string> extractWords(const std::string& text) {
@@ -223,7 +228,7 @@ public:
 		// return tf_td_normalized * idf;
 
 		// BM25 - in the slides (but it will produce negative value when docCountContainWord > 1/2 totalDocuments, then the ranking is wrong)
-		// float w_t = log2f((this->totalDocuments - docCountContainWord + 0.5f) / (docCountContainWord + 0.5f));
+		// float w_t = std::log2f((this->totalDocuments - docCountContainWord + 0.5f) / (docCountContainWord + 0.5f));
 		// float k1 = 1.2f;
 		// float k3 = 7;
 		// float b = 0.75f;
@@ -254,7 +259,7 @@ public:
 			uint32_t docCountContainWord = postings.size();
 
 			// Okapi BM25 https://en.wikipedia.org/wiki/Okapi_BM25
-			float idf = log((this->totalDocuments - docCountContainWord + 0.5) / (docCountContainWord + 0.5) + 1); // Ensure positive
+			float idf = std::log((this->totalDocuments - docCountContainWord + 0.5) / (docCountContainWord + 0.5) + 1); // Ensure positive
 
 			for (size_t i = 0; i < postings.size(); ++i) {
 				uint32_t docId = postings[i].first; // docId (1, 2, 3, ...)
