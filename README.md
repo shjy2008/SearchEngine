@@ -1,6 +1,6 @@
 The assginment contains three parts: parser, indexer, and search engine.
 
-To build the code, run 'make' command first.
+To run the code, please run the 'make' command to build the code first.
 
 
 1. Parser
@@ -31,6 +31,21 @@ The indexer will create four index files:
 3. Search engine
 Source code is in searchEngine.cpp
 To run the search engine, run './searchEngine' command, then enter the query and press ENTER.
-Or use pipeline to pass query to the searchEngine. Example: echo James Rosenfield | ./searchEngine
 The programme will output the DOCNO and relevance scores of all the relevant documents, ranked by their relevance scores.
+Example: ./searchEngine
+James Rosenfield
+wsj870324-0001 19.9359
+wsj870413-0059 17.5287
+wsj871118-0032 17.1951
+wsj891009-0161 15.7512
+wsj870826-0073 14.4108
+wsj880801-0006 13.78
+wsj911206-0111 13.0946
+wsj881018-0006 12.5689
+wsj900614-0033 11.027
+wsj900507-0068 10.7572
+...
+...
+
+Or use pipeline to pass query to the searchEngine. Example: echo James Rosenfield | ./searchEngine
 The relevance score is calculated using Okapi BM25 https://en.wikipedia.org/wiki/Okapi_BM25, with k1=1.2 and b=0.75.

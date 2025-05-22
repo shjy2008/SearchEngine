@@ -15,11 +15,11 @@ std::vector<std::string> extractWords(const std::string& text) {
 			word += std::tolower(text[i]);
 		else if (std::isdigit(text[i]))
 			word += text[i];
-		else if (text[i] == '-') { // Some words have '-', such as "well-being"
-			if (i > 0 && std::isalnum(text[i - 1])) { // Ignore words starting with '-'
-				word += text[i];
-			}
-		}
+		// else if (text[i] == '-') { // Some words have '-', such as "well-being"
+		// 	if (i > 0 && std::isalnum(text[i - 1])) { // Ignore words starting with '-'
+		// 		word += text[i];
+		// 	}
+		// }
 		else {
 			if (word.length() > 0) {
 				if (word.length() > 255) { // Length is stored in uint8_t, so truncate the word if its length > 255
